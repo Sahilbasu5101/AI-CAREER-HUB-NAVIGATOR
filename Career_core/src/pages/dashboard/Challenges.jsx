@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Challenges = () => {
     const [activeTab, setActiveTab] = useState('Live');
+    const navigate = useNavigate();
     
     // Countdown Timer State
     const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', mins: '00' });
@@ -41,8 +43,7 @@ const Challenges = () => {
     // Mock Toast notification state
     const [showToast, setShowToast] = useState(false);
     const handleRegister = () => {
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        navigate('/dashboard/challenges/data-science-sprint/assessment');
     };
 
     const challengesData = [
@@ -172,7 +173,7 @@ const Challenges = () => {
                             onClick={handleRegister}
                             className="bg-blue-600 hover:bg-indigo-600 hover:scale-[1.02] active:scale-[0.98] transition-all text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-primary/30 flex items-center gap-2 group"
                         >
-                            Register Now
+                            Start Sprint Assessment
                             <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </button>
                     </div>

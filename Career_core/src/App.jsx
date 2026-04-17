@@ -17,6 +17,7 @@ import Insights from './pages/dashboard/Insights';
 import AiHelper from './pages/dashboard/AiHelper';
 import Challenges from './pages/dashboard/Challenges';
 import ResumeAnalyzer from './pages/dashboard/ResumeAnalyzer';
+import SprintAssessment from './pages/dashboard/SprintAssessment';
 import './App.css';
 
 import { AuthProvider } from './context/AuthContext';
@@ -49,6 +50,7 @@ function App() {
             <Route path="roadmap" element={<Roadmap />} />
             <Route path="ai-helper" element={<AiHelper />} />
             <Route path="challenges" element={<Challenges />} />
+            <Route path="challenges/:id/assessment" element={<SprintAssessment />} />
             <Route path="insights" element={<Insights />} />
             <Route path="resume-analyzer" element={<ResumeAnalyzer />} />
           </Route>

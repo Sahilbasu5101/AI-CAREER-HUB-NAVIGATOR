@@ -9,7 +9,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 # Use gevent or eventlet if available, fallback to threading
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Load OpenCV Haar Cascades
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -119,4 +119,4 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     # Use port 5001 to avoid common conflicts
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False)
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
