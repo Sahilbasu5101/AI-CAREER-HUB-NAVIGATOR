@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 const Step1Identity = () => {
@@ -36,20 +36,22 @@ const Step1Identity = () => {
         setIsLoading(true);
         try {
             const userRef = doc(db, "users", user.uid);
-            await updateDoc(userRef, {
-                "identity.name": formData.displayName,
-                "identity.college": formData.university,
-                "identity.branch": formData.course,
-                "identity.year": formData.currentYear === '1' ? '1st Year' : 
-                                 formData.currentYear === '2' ? '2nd Year' :
-                                 formData.currentYear === '3' ? '3rd Year' :
-                                 formData.currentYear === '4' ? '4th Year' : 'Final Year',
-                "onboardingCompleted": false // Not complete yet
-            });
+            await setDoc(userRef, {
+                identity: {
+                    name: formData.displayName,
+                    college: formData.university,
+                    branch: formData.course,
+                    year: formData.currentYear === '1' ? '1st Year' : 
+                          formData.currentYear === '2' ? '2nd Year' :
+                          formData.currentYear === '3' ? '3rd Year' :
+                          formData.currentYear === '4' ? '4th Year' : 'Final Year',
+                },
+                onboardingCompleted: false // Not complete yet
+            }, { merge: true });
             navigate('/onboarding/step-2');
         } catch (error) {
             console.error("Error saving step 1:", error);
-            alert("Failed to save. Please try again.");
+            alert("Failed to save: " + error.message);
         } finally {
             setIsLoading(false);
         }

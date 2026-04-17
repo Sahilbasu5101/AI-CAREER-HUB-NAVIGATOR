@@ -1,6 +1,6 @@
-# Universal Carrier Hub
+# AI-CAREER-HUB-NAVIGATOR
 
-**Universal Student Hub** is a premium, dark-themed React application designed to empower students by streamlining their academic journey and career development. It serves as a central platform for managing profiles, tracking coding achievements, optimizing resumes, and leveraging AI for personalized support.
+**AI-CAREER-HUB-NAVIGATOR** is a premium, dark-themed React application designed to empower students by streamlining their academic journey and career development. It serves as a central platform for managing profiles, tracking coding achievements, optimizing resumes, and leveraging AI for personalized support.
 
 ## 🚀 Features
 
@@ -58,7 +58,7 @@ Follow these steps to set up the project locally.
 
 1.  **Clone the repository**
     ```bash
-    git clone  https://github.com/namanofficial9509/CareerHub.git
+    git clone https://github.com/Sahilbasu5101/AI-CAREER-HUB-NAVIGATOR.git
     ```
 
 2.  **Install dependencies**

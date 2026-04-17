@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db, auth } from '../../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { io } from 'socket.io-client';
 
 const SprintAssessment = () => {
     // State for selected answers
@@ -13,9 +14,15 @@ const SprintAssessment = () => {
     const [testStarted, setTestStarted] = useState(false);
     const [violationCount, setViolationCount] = useState(0);
     const [isTerminated, setIsTerminated] = useState(false);
+    const [cheatScore, setCheatScore] = useState(0);
+    const [statusMessage, setStatusMessage] = useState("Initializing secure environment...");
+    
     const streamRef = useRef(null);
     const webcamStreamRef = useRef(null);
     const videoRef = useRef(null);
+    const socketRef = useRef(null);
+    const canvasRef = useRef(document.createElement('canvas'));
+    const frameIntervalRef = useRef(null);
 
     const endTest = useCallback(async (reason) => {
         setIsTerminated(true);
@@ -72,16 +79,53 @@ const SprintAssessment = () => {
             }
 
             webcamStream.getVideoTracks()[0].onended = () => {
-                handleViolation("camera_off", "camera_violation");
+                socketRef.current?.emit('report_tab_event', { reason: "camera_off" });
             };
 
             // Request Screen share
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
             streamRef.current = stream;
             stream.getVideoTracks()[0].onended = () => {
-                handleViolation("screen_share_stop");
+                socketRef.current?.emit('report_tab_event', { reason: "screen_share_stop" });
             };
             
+            // Connect to Backend Socket
+            const socket = io('http://localhost:5001');
+            socketRef.current = socket;
+
+            socket.on('connect', () => {
+                setStatusMessage("Secure Monitoring Active");
+                socket.emit('start_session', { userId: auth?.currentUser?.uid || 'anonymous' });
+            });
+
+            socket.on('violation_update', (data) => {
+                setCheatScore(data.score);
+                setStatusMessage(`Warning: ${data.reason}`);
+                // Optional: Flash a warning UI
+            });
+
+            socket.on('terminate_test', (data) => {
+                endTest(data.reason || "unfair means");
+            });
+
+            socket.on('disconnect', () => {
+                setStatusMessage("Connection lost. Trying to reconnect...");
+            });
+
+            // Start frame streaming
+            frameIntervalRef.current = setInterval(() => {
+                if (videoRef.current && socketRef.current?.connected) {
+                    const canvas = canvasRef.current;
+                    const video = videoRef.current;
+                    canvas.width = 320; // Lower resolution for performance
+                    canvas.height = 240;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const frame = canvas.toDataURL('image/jpeg', 0.5); // 50% quality
+                    socketRef.current.emit('process_frame', { frame });
+                }
+            }, 200); // 5 FPS
+
             // Full screen
             await document.documentElement.requestFullscreen();
             setTestStarted(true);
@@ -92,18 +136,28 @@ const SprintAssessment = () => {
     };
 
     useEffect(() => {
+        if (testStarted && videoRef.current && webcamStreamRef.current) {
+            videoRef.current.srcObject = webcamStreamRef.current;
+        }
+    }, [testStarted]);
+
+    useEffect(() => {
         if (!testStarted || isTerminated) return;
 
         const handleVisibilityChange = () => {
-            if (document.hidden) handleViolation("tab_switch");
+            if (document.hidden) {
+                socketRef.current?.emit('report_tab_event', { reason: "tab_switch" });
+            }
         };
 
         const handleBlur = () => {
-             handleViolation("blur");
+            socketRef.current?.emit('report_tab_event', { reason: "window_blur" });
         };
 
         const handleFullscreenChange = () => {
-            if (!document.fullscreenElement) handleViolation("fullscreen_exit");
+            if (!document.fullscreenElement) {
+                socketRef.current?.emit('report_tab_event', { reason: "fullscreen_exit" });
+            }
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -114,30 +168,12 @@ const SprintAssessment = () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("blur", handleBlur);
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            
+            if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+            if (socketRef.current) socketRef.current.disconnect();
         };
-    }, [testStarted, isTerminated, handleViolation]);
+    }, [testStarted, isTerminated]);
 
-    // Face Detection Extensible Interval
-    useEffect(() => {
-        if (!testStarted || isTerminated) return;
-
-        const faceCheckInterval = setInterval(() => {
-            // NOTE: Structurally prepared for face-api.js or equivalent integration.
-            // e.g. const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions());
-            
-            // Stub Values:
-            const hasFace = true; 
-            const multipleFaces = false;
-            
-            if (!hasFace) {
-                handleViolation("no_face_detected", "camera_violation");
-            } else if (multipleFaces) {
-                handleViolation("multiple_faces_detected", "camera_violation");
-            }
-        }, 3000);
-
-        return () => clearInterval(faceCheckInterval);
-    }, [testStarted, isTerminated, handleViolation]);
 
     useEffect(() => {
         if (!testStarted || isTerminated) return;
@@ -279,11 +315,26 @@ const SprintAssessment = () => {
             
             {/* Live Camera Preview overlay */}
             {testStarted && !isTerminated && (
-                <div className="fixed top-24 right-6 sm:bottom-6 sm:right-6 sm:top-auto z-50 w-48 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-[#5d3fd3]">
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
-                        <span className="size-2 bg-white rounded-full animate-pulse"></span>
-                        Camera Active
+                <div className="fixed top-24 right-6 sm:bottom-6 sm:right-6 sm:top-auto z-50 w-56 aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-[#5d3fd3] group">
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                    
+                    {/* Status Overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    
+                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+                        <div className={`text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg flex items-center gap-1.5 backdrop-blur-md ${cheatScore > 10 ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                            <span className="size-2 bg-white rounded-full animate-pulse"></span>
+                            {statusMessage}
+                        </div>
+                        {cheatScore > 0 && (
+                            <div className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg backdrop-blur-md">
+                                Cheat Score: {cheatScore}/20
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="absolute bottom-2 left-2 text-[9px] text-white/70 font-medium">
+                        Secure AI Guard Active
                     </div>
                 </div>
             )}

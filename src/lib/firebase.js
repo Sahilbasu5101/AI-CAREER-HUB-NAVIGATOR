@@ -21,9 +21,7 @@ import { getAI } from "firebase/ai";
 // Initialize Firebase Authentication and get a reference to the service
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
-const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true
-});
+const db = getFirestore(app);
 
 const ai = getAI(app);
 
