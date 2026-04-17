@@ -5,10 +5,14 @@ import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { Download, ExternalLink, Share2, CheckCircle2, TrendingUp, Github, Briefcase, GraduationCap, MapPin, Activity, ShieldCheck, Mail, Calendar, Loader2, Sparkles, Target, FlaskConical, X, Plus } from 'lucide-react';
 import { calculateIntelligenceScore, calculateSkillLevel } from '../../lib/intelligenceEngine';
+import html2pdf from 'html2pdf.js';
 
 const Profile = () => {
     const { user, userData, updateIntelligenceSignal, syncPlatformData } = useAuth();
     const [activeTab, setActiveTab] = useState('Overview');
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [avatarImage, setAvatarImage] = useState(null);
@@ -169,6 +173,106 @@ const Profile = () => {
         }
     };
 
+    const handleDownloadResume = () => {
+        setIsGeneratingPdf(true);
+        
+        // Construct hidden DOM layout representing the pure resume format
+        const element = document.createElement('div');
+        const studentName = userData?.identity?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Student Name');
+        const studentRole = userData?.career_dna?.target_role || 'Software Engineer';
+        const studentBranch = userData?.identity?.branch || 'Computer Science';
+        const studentCollege = userData?.identity?.college || 'University';
+        
+        element.innerHTML = `
+            <div style="padding: 40px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111827; max-width: 800px; margin: 0 auto; line-height: 1.5; background: white;">
+                
+                <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563EB; padding-bottom: 15px;">
+                    <h1 style="font-size: 32px; font-weight: 800; margin: 0 0 5px 0; color: #111827; letter-spacing: -0.5px; text-transform: capitalize;">${studentName}</h1>
+                    <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 10px 0; color: #2563EB;">${studentRole}</h2>
+                    <p style="font-size: 14px; color: #4B5563; margin: 0;">${studentBranch} | ${studentCollege}</p>
+                    <p style="font-size: 13px; color: #6B7280; margin: 8px 0 0 0;">${userData?.social_links?.github ? 'github.com/'+userData.social_links.github : 'github.com/developer'} | ${userData?.social_links?.linkedin ? 'linkedin.com/in/'+userData.social_links.linkedin : 'linkedin.com/in/developer'} | ${user?.email || 'student@university.edu'}</p>
+                </div>
+                
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Technical Skills</h2>
+                <div style="margin-bottom: 25px;">
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Languages:</strong> JavaScript (ES6+), Node.js, React.js, Python, Go, C#</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Cloud & Databases:</strong> PostgreSQL, MongoDB, Redis, AWS EC2, Azure, Docker</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Developer Tools:</strong> Git, GitHub Actions, Vercel, .NET Core, Express.js</p>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Professional Experience</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">Software Engineer Intern</h3>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">May 2024 - Aug 2024</span>
+                        </div>
+                        <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 8px 0;">Microsoft | Seattle, WA</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.6;">
+                            <li style="margin-bottom: 5px;">Engineered scalable microservices for Azure Core infrastructure utilizing C# and .NET.</li>
+                            <li style="margin-bottom: 5px;">Reduced container deployment latency by <strong style="color:#111827">30%</strong> through advanced Redis caching mechanisms.</li>
+                            <li style="margin-bottom: 5px;">Authored 15+ comprehensive unit tests in Jest, increasing coverage from 75% to 92%.</li>
+                            <li style="margin-bottom: 5px;">Migrated legacy CI/CD bash scripts to GitHub Actions resulting in robust continuous integration checks.</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">Backend Developer (Contract)</h3>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Jan 2023 - Dec 2023</span>
+                        </div>
+                        <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 8px 0;">Local Startup Inc.</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.6;">
+                            <li style="margin-bottom: 5px;">Architected REST APIs using Node.js/Express handling 5,000+ daily operational requests.</li>
+                            <li style="margin-bottom: 5px;">Integrated Stripe payment gateway securely for seamless end-user subscription flows.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Featured Projects</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">AI Resume Parser</h3>
+                                <span style="font-size: 11px; padding: 2px 6px; background: #EEF2FF; color: #4338CA; border-radius: 4px; font-weight: 700;">Hackathon Winner</span>
+                            </div>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Nov 2023</span>
+                        </div>
+                        <p style="font-size: 13.5px; font-weight: 700; color: #4B5563; margin: 0 0 6px 0;">Python, OpenAI GPT-4, React, FastAPI</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.5;">
+                            <li style="margin-bottom: 4px;">Won 1st Place at University Hackathon against 100+ competing engineering teams.</li>
+                            <li style="margin-bottom: 4px;">Built a multi-modal parser using OpenAI GPT-4 to extract structured data from complex PDF/Word formats, achieving an overall 91% accuracy rate for extraction.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Education</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                        <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">${studentCollege}</h3>
+                        <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Expected Grad: May 2025</span>
+                    </div>
+                    <p style="font-size: 14px; margin: 0 0 4px 0; font-weight: 700; color: #374151;">Bachelor of Technology in ${studentBranch}</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0; color: #4B5563;"><strong style="color: #111827;">CGPA:</strong> 9.2/10.0 | <strong style="color: #111827;">Major GPA:</strong> 9.5/10.0</p>
+                    <p style="font-size: 13.5px; margin: 0; color: #4B5563;"><strong style="color: #111827;">Select Coursework:</strong> Advanced Algorithms, Operating Systems, Computer Networks, Database Architecture</p>
+                </div>
+            </div>
+        `;
+
+        const opt = {
+            margin:       0.4,
+            filename:     `${studentName.replace(/\s+/g, '_')}_Resume_Generated.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            setIsGeneratingPdf(false);
+        });
+    };
+
     // Unified intelligence logic is now imported from intelligenceEngine.js
     // Background sync is now handled in AuthContext globally
 
@@ -307,7 +411,7 @@ const Profile = () => {
 
                     {/* Right: Actions */}
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto shrink-0 pb-2">
-                        <button className="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
+                        <button onClick={() => setIsShareModalOpen(true)} className="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
                             <Share2 className="size-4" /> Share
                         </button>
                         <Link 
@@ -317,8 +421,13 @@ const Profile = () => {
                             <ExternalLink className="size-4" /> Portfolio
                         </Link>
                         {/* Primary Action */}
-                        <button className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
-                            <Download className="size-4" /> Download Resume
+                        <button 
+                            onClick={handleDownloadResume}
+                            disabled={isGeneratingPdf}
+                            className={`w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px] ${isGeneratingPdf ? 'opacity-80 cursor-wait' : ''}`}
+                        >
+                            {isGeneratingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                            {isGeneratingPdf ? 'Generating PDF...' : 'Download Resume'}
                         </button>
                     </div>
                 </div>
@@ -1541,6 +1650,52 @@ const Profile = () => {
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            )}
+
+            {/* Share Profile Modal Overlay */}
+            {isShareModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 p-6 relative animate-in zoom-in-95 duration-200">
+                        <button 
+                            onClick={() => setIsShareModalOpen(false)}
+                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                        >
+                            <X className="size-5" />
+                        </button>
+                        <h3 className="text-[20px] font-bold text-slate-900 dark:text-white mb-1.5 tracking-tight">Share Profile</h3>
+                        <p className="text-[13.5px] text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">Broadcast your portfolio link to recruiters and your extended network.</p>
+                        
+                        <div className="flex justify-center gap-5 mb-7">
+                            <a href={`https://wa.me/?text=${encodeURIComponent("Check out my comprehensive CareerTech profile! " + window.location.href)}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#E8F5E9] hover:bg-[#C8E6C9] flex items-center justify-center transition-transform hover:scale-110 shadow-sm border border-transparent hover:border-green-300">
+                                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" alt="WhatsApp" className="size-6" />
+                            </a>
+                            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${window.location.href}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#E3F2FD] hover:bg-[#BBDEFB] flex items-center justify-center transition-transform hover:scale-110 shadow-sm border border-transparent hover:border-blue-300">
+                                <img src="https://cdn-icons-png.flaticon.com/512/145/145807.png" alt="LinkedIn" className="size-6" />
+                            </a>
+                            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("Check out my AI-driven CareerTech Hub! ")}&url=${window.location.href}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#F3F4F6] hover:bg-[#E5E7EB] dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center transition-transform hover:scale-110 shadow-sm">
+                                <svg viewBox="0 0 24 24" className="size-5 fill-slate-900 dark:fill-white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.008 5.96H5.078z"></path></svg>
+                            </a>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <input type="text" readOnly value={window.location.href} className="flex-1 bg-transparent text-[13px] font-medium text-slate-600 dark:text-slate-300 outline-none px-2 truncate" />
+                            <button 
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    setIsCopied(true);
+                                    setTimeout(() => setIsCopied(false), 2000);
+                                }}
+                                className={`shrink-0 px-4 py-2 text-[13px] font-bold rounded-lg transition-colors flex items-center justify-center min-w-[80px] ${
+                                    isCopied 
+                                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' 
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                                }`}
+                            >
+                                {isCopied ? 'Copied!' : 'Copy'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
