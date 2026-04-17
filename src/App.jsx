@@ -23,6 +23,10 @@ import Challenges from './pages/dashboard/Challenges';
 import ChallengeDetail from './pages/dashboard/ChallengeDetail';
 import SprintAssessment from './pages/dashboard/SprintAssessment';
 import ResumeAnalyzer from './pages/dashboard/ResumeAnalyzer';
+import RecruiterLayout from './pages/recruiter/RecruiterLayout';
+import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
+import TalentHunt from './pages/recruiter/TalentHunt';
+import Recommendations from './pages/recruiter/Recommendations';
 import './App.css';
 
 import { AuthProvider } from './context/AuthContext';
@@ -63,6 +67,13 @@ function App() {
             <Route path="challenges/:id/assessment" element={<SprintAssessment />} />
             <Route path="insights" element={<Insights />} />
             <Route path="resume-analyzer" element={<ResumeAnalyzer />} />
+          </Route>
+
+          {/* Recruiter Routes */}
+          <Route path="/recruiter" element={<RecruiterLayout />}>
+            <Route index element={<RecruiterDashboard />} />
+            <Route path="talent-hunt" element={<TalentHunt />} />
+            <Route path="recommendations" element={<Recommendations />} />
           </Route>
         </Routes>
       </Router>
