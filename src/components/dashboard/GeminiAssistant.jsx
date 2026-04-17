@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -19,6 +20,11 @@ import { generateAiContextSummary } from '../../lib/intelligenceEngine';
 
 const GeminiAssistant = () => {
     const { userData } = useAuth();
+    const location = useLocation();
+    
+    // Hide component if viewing an assessment to prevent cheating
+    const isAssessmentPage = location.pathname.endsWith('/assessment');
+    
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { role: 'assistant', text: "Hi! I'm your AI Career Mentor. I've been tracking your progress in the Data Hub. How can I help you grow today?" }
@@ -97,6 +103,8 @@ Please respond to the student's last message. Do not output your own speaker lab
             setIsTyping(false);
         }
     };
+
+    if (isAssessmentPage) return null;
 
     return (
         <>
