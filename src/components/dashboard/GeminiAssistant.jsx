@@ -13,8 +13,7 @@ import {
     Zap,
     AlertCircle
 } from 'lucide-react';
-import { getGenerativeModel } from 'firebase/ai';
-import { ai } from '../../lib/firebase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useAuth } from '../../context/AuthContext';
 import { generateAiContextSummary } from '../../lib/intelligenceEngine';
 
@@ -56,7 +55,10 @@ const GeminiAssistant = () => {
 
         try {
             // Initialize the GenerativeModel instance
-            const model = getGenerativeModel(ai, { model: 'gemini-1.5-flash', mode: 'prefer_in_cloud' });
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error("API Key missing. Please add VITE_GEMINI_API_KEY to your .env file.");
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
             
             // Generate full chat history for context
             const history = newMessages.map(m => `**${m.role === 'user' ? 'User' : 'Assistant'}**: ${m.text}`).join('\n\n');

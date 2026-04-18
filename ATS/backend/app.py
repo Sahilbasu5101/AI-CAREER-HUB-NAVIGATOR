@@ -98,7 +98,7 @@ def gemini_resume_insights(resume_text: str) -> dict:
         return {}
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-flash-latest")
 
     prompt = (
         "You are an ATS resume reviewer.\n"
@@ -161,7 +161,7 @@ def create_app() -> Flask:
     CORS(app)
 
     # Load GEMINI_API_KEY from the repo root .env (if present).
-    load_dotenv(BASE_DIR.parent / ".env")
+    load_dotenv(BASE_DIR.parent.parent / ".env")
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 

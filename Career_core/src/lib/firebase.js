@@ -16,7 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 import { getFirestore, initializeFirestore } from "firebase/firestore";
-import { getAI } from "firebase/ai";
+import { getAI, GoogleAIBackend } from "firebase/ai";
 
 // Initialize Firebase Authentication and get a reference to the service
 const auth = getAuth(app);
@@ -25,6 +25,6 @@ const db = initializeFirestore(app, {
     experimentalForceLongPolling: true
 });
 
-const ai = getAI(app);
+const ai = getAI(app, { backend: new GoogleAIBackend() });
 
 export { auth, googleProvider, db, ai };

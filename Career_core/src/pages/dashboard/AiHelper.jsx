@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getGenerativeModel } from 'firebase/ai';
-import { ai } from '../../lib/firebase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateAiContextSummary, calculateSkillLevel } from '../../lib/intelligenceEngine';
 
 const AiHelper = () => {
@@ -50,8 +49,10 @@ const AiHelper = () => {
 
         try {
             // Initialize the GenerativeModel instance
-            const model = getGenerativeModel(ai, { model: 'gemini-1.5-flash', mode: 'prefer_in_cloud' });
-            
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error("API Key missing. Please add VITE_GEMINI_API_KEY to your .env file.");
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
             // Build a REAL personalized prompt with the student's profile
             const studentContext = generateAiContextSummary(userData);
             const historyText = newMessages.map(m => `**${m.role === 'user' ? 'User' : 'Assistant'}**: ${m.content}`).join('\n\n');

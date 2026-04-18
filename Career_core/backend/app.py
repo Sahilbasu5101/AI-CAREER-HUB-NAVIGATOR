@@ -223,7 +223,7 @@ def gemini_resume_insights(resume_text: str, job_description: str | None = None)
         return {}
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-flash-latest")
 
     jd_block = f"Target job description:\n{job_description}\n\n" if (job_description or "").strip() else ""
 
@@ -288,7 +288,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app)
 
-    load_dotenv(BASE_DIR.parent / ".env")
+    load_dotenv(BASE_DIR.parent.parent / ".env")
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     @app.get("/health")
