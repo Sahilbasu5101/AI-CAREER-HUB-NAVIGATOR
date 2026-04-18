@@ -131,7 +131,7 @@ const Challenges = () => {
                     <div className="absolute -top-32 -right-16 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
                     
                     <div className="absolute inset-0 flex items-center justify-end pr-12 opacity-[0.03] pointer-events-none select-none overflow-hidden">
-                        <span className="text-[140px] font-black leading-none text-white whitespace-nowrap hidden md:block tracking-tighter mix-blend-overlay">AI<br/>NATION<br/>2024</span>
+                        <span className="text-[140px] font-black leading-none text-white whitespace-nowrap hidden md:block tracking-tighter mix-blend-overlay">AI<br/>NATION<br/>2026</span>
                     </div>
 
                     <div className="relative z-10 w-full max-w-2xl">
@@ -140,7 +140,7 @@ const Challenges = () => {
                             <span className="bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">Featured Challenge</span>
                         </div>
 
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight tracking-tight">Global AI Innovation Hackathon 2024</h2>
+                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight tracking-tight">Global AI Innovation Hackathon 2026</h2>
                         <p className="text-gray-300 text-sm md:text-base mb-8 max-w-xl">
                             Win <strong className="text-white">$5,000</strong> + Google Referral. Join the world's most elite AI challenge.
                         </p>

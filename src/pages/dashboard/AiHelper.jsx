@@ -367,16 +367,24 @@ Respond to the student's last message. Do not output your own speaker label.`;
                         <button className="absolute left-4 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                             <span className="material-symbols-outlined text-[24px]">attachment</span>
                         </button>
-                        <input
-                            type="text"
+                        <textarea
                             value={messageInput}
-                            onChange={(e) => setMessageInput(e.target.value)}
+                            onChange={(e) => {
+                                setMessageInput(e.target.value);
+                                e.target.style.height = '64px';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                            }}
                             placeholder={`Ask anything to your career mentor, ${firstName}`}
-                            className="w-full h-[64px] bg-[#f8f9ff] dark:bg-gray-700 border-none rounded-xl pl-16 pr-20 text-slate-900 dark:text-slate-100 text-[15px] font-bold placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/50 transition-all disabled:opacity-50"
+                            className="w-full min-h-[64px] max-h-[200px] pt-[20px] pb-[20px] bg-[#f8f9ff] dark:bg-gray-700 border-none rounded-xl pl-16 pr-20 text-slate-900 dark:text-slate-100 text-[15px] font-bold placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/50 transition-all disabled:opacity-50 resize-none overflow-y-auto no-scrollbar leading-snug"
                             disabled={isTyping}
+                            rows={1}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && messageInput.trim() && !isTyping) {
-                                    handleSendMessage(null);
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (messageInput.trim() && !isTyping) {
+                                        handleSendMessage(null);
+                                        e.target.style.height = '64px';
+                                    }
                                 }
                             }}
                         />

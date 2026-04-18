@@ -7,6 +7,12 @@ import { Download, ExternalLink, Share2, CheckCircle2, TrendingUp, Github, Brief
 import { calculateIntelligenceScore, calculateSkillLevel } from '../../lib/intelligenceEngine';
 import html2pdf from 'html2pdf.js';
 
+const LeetCodeIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+        <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.939 5.939 0 0 0 1.271 1.543l5.096 5.109a2.021 2.021 0 0 0 1.618.59 2.004 2.004 0 0 0 1.085-.548l3.443-3.524a2.02 2.02 0 0 0 .574-1.433 2.02 2.02 0 0 0-.574-1.424l-6.567-6.6-6.56 6.586a.222.222 0 0 1-.31 0 .222.222 0 0 1 0-.311l6.558-6.587 6.568 6.6a.222.222 0 0 1 0 .311.222.222 0 0 1-.31 0l-5.097-5.11a3.834 3.834 0 0 1-.806-.976 3.738 3.738 0 0 1-.226-.64 3.551 3.551 0 0 1-.044-1.493 3.44 3.44 0 0 1 .081-.336 3.398 3.398 0 0 1 .778-1.355l3.85-4.123 5.405-5.787A1.373 1.373 0 0 0 13.483 0zm9.467 15.39a1.002 1.002 0 0 0-1.002.99l-9.06 9.06a1.002 1.002 0 0 0 1.417 1.417l9.06-9.06a1.002 1.002 0 0 0-.415-1.407z" />
+    </svg>
+);
+
 const Profile = () => {
     const { user, userData, updateIntelligenceSignal, syncPlatformData } = useAuth();
     const [activeTab, setActiveTab] = useState('Overview');
@@ -33,7 +39,51 @@ const Profile = () => {
     // Form states for other categories
     const [academicsForm, setAcademicsForm] = useState({ semester: '', sgpa: '', year: '', subjects: '' });
     const [researchForm, setResearchForm] = useState({ title: '', journal: '', status: 'Published', publishedDate: '' });
-    const [experienceForm, setExperienceForm] = useState({ role: '', company: '', type: 'Internship', startDate: '', endDate: '' });
+    const [experienceForm, setExperienceForm] = useState({ role: '', company: '', type: 'Internship', startDate: '', endDate: '', proof: null });
+    const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
+    const [newGithub, setNewGithub] = useState('');
+    const [isLeetcodeModalOpen, setIsLeetcodeModalOpen] = useState(false);
+    const [newLeetcode, setNewLeetcode] = useState('');
+
+    const handleGithubSave = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            await updateIntelligenceSignal('social_links', { 
+                ...(userData?.social_links || {}), 
+                github: newGithub 
+            });
+            setIsGithubModalOpen(false);
+            setSyncSuccess(true);
+            setTimeout(() => setSyncSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error updating github:", error);
+            alert("Failed to update GitHub");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleLeetcodeSave = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            await updateIntelligenceSignal('social_links', { 
+                ...(userData?.social_links || {}), 
+                leetcode: newLeetcode 
+            });
+            setIsLeetcodeModalOpen(false);
+            setSyncSuccess(true);
+            setTimeout(() => setSyncSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error updating leetcode:", error);
+            alert("Failed to update LeetCode");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handleProjectSubmit = async (e) => {
         e.preventDefault();
@@ -100,7 +150,8 @@ const Profile = () => {
                 });
                 await updateIntelligenceSignal('metrics.research_papers', 1, true);
             } else if (type === 'experience') {
-                formData = experienceForm;
+                const { proof, ...restFormData } = experienceForm;
+                formData = restFormData;
                 signalKey = 'experiences';
                 await addDoc(collection(db, 'users', user.uid, 'experiences'), {
                     ...formData,
@@ -112,7 +163,7 @@ const Profile = () => {
             setActiveCategory(null);
             setAcademicsForm({ semester: '', sgpa: '', year: '', subjects: '' });
             setResearchForm({ title: '', journal: '', status: 'Published', publishedDate: '' });
-            setExperienceForm({ role: '', company: '', type: 'Internship', startDate: '', endDate: '' });
+            setExperienceForm({ role: '', company: '', type: 'Internship', startDate: '', endDate: '', proof: null });
             alert(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`);
         } catch (error) {
             console.error(`Error adding ${type}:`, error);
@@ -370,8 +421,25 @@ const Profile = () => {
                                         <div className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 p-1 rounded-md" title="University Verified">
                                             <ShieldCheck className="size-4" />
                                         </div>
-                                        <div className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 p-1 rounded-md" title="GitHub Connected">
+                                        <div 
+                                            onClick={() => {
+                                                setNewGithub(userData?.social_links?.github || '');
+                                                setIsGithubModalOpen(true);
+                                            }}
+                                            className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 p-1 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" 
+                                            title={userData?.social_links?.github ? "GitHub Connected" : "Add GitHub"}
+                                        >
                                             <Github className="size-4" />
+                                        </div>
+                                        <div 
+                                            onClick={() => {
+                                                setNewLeetcode(userData?.social_links?.leetcode || '');
+                                                setIsLeetcodeModalOpen(true);
+                                            }}
+                                            className="bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 p-1 rounded-md cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors" 
+                                            title={userData?.social_links?.leetcode ? "LeetCode Connected" : "Add LeetCode"}
+                                        >
+                                            <LeetCodeIcon className="size-4" />
                                         </div>
                                     </div>
                                 </div>
@@ -677,7 +745,7 @@ const Profile = () => {
                     {/* Sticky Recruiter Action Console */}
                     <div className="bg-slate-900 dark:bg-[#0B0F19] rounded-2xl p-8 border border-slate-800 shadow-sm flex flex-col gap-6">
                         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                            <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Recruiter Portal</span>
+                            <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
                         </div>
                         
                         <div className="flex flex-col gap-4 mb-2">
@@ -697,14 +765,7 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-3">
-                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm">
-                                <Calendar className="size-4" /> Schedule Interview
-                            </button>
-                            <button className="w-full bg-slate-800 hover:bg-slate-700 text-white text-[14px] font-medium py-3 rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-2">
-                                <Mail className="size-4" /> Contact Student
-                            </button>
-                        </div>
+
                     </div>
 
                     {/* Job Readiness Analytical Dashboard */}
@@ -1116,7 +1177,7 @@ const Profile = () => {
                         )}
                     </form>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div className="flex flex-col gap-6">
                         
                         {!activeCategory ? (
                             <>
@@ -1398,6 +1459,15 @@ const Profile = () => {
                                         <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">End Month (optional)</label>
                                         <input type="month" value={experienceForm.endDate} onChange={(e) => setExperienceForm(prev => ({...prev, endDate: e.target.value}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-[14px] text-slate-900 dark:text-white" />
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Proof (PDF/Docs)</label>
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf,.doc,.docx"
+                                        onChange={(e) => setExperienceForm(prev => ({...prev, proof: e.target.files[0]}))} 
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[14px] text-slate-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                                    />
                                 </div>
                                 <div className="flex justify-end gap-3 pt-2">
                                     <button type="button" onClick={() => setActiveCategory(null)} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 rounded-xl">Cancel</button>
@@ -1696,6 +1766,84 @@ const Profile = () => {
                                 {isCopied ? 'Copied!' : 'Copy'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* GitHub Username Modal */}
+            {isGithubModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+                        
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <h3 className="text-[18px] font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Github className="size-5 text-slate-700 dark:text-slate-300" /> Add GitHub Profile
+                            </h3>
+                            <button onClick={() => setIsGithubModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleGithubSave} className="p-6 flex flex-col gap-6">
+                            <div>
+                                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">GitHub Username</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newGithub} 
+                                    onChange={(e) => setNewGithub(e.target.value)} 
+                                    placeholder="e.g. yashikasharma" 
+                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-[14px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                                />
+                                <p className="text-[12px] text-slate-500 mt-2">Enter your username only, not the full URL. We use this to analyze your public repositories.</p>
+                            </div>
+                            
+                            <div className="flex gap-3 mt-2">
+                                <button type="button" onClick={() => setIsGithubModalOpen(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[14px] font-bold rounded-xl transition-all">Cancel</button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-[14px] font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-wait">
+                                    {isSubmitting ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : 'Save Connect'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* LeetCode Username Modal */}
+            {isLeetcodeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+                        
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <h3 className="text-[18px] font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <LeetCodeIcon className="size-5 text-orange-600" /> Add LeetCode Profile
+                            </h3>
+                            <button onClick={() => setIsLeetcodeModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleLeetcodeSave} className="p-6 flex flex-col gap-6">
+                            <div>
+                                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">LeetCode Username</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newLeetcode} 
+                                    onChange={(e) => setNewLeetcode(e.target.value)} 
+                                    placeholder="e.g. yashikasharma" 
+                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-[14px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500/50 transition-all" 
+                                />
+                                <p className="text-[12px] text-slate-500 mt-2">Enter your username only. We use this to analyze your coding stats and patterns.</p>
+                            </div>
+                            
+                            <div className="flex gap-3 mt-2">
+                                <button type="button" onClick={() => setIsLeetcodeModalOpen(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[14px] font-bold rounded-xl transition-all">Cancel</button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white text-[14px] font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-wait">
+                                    {isSubmitting ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : 'Save Connect'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

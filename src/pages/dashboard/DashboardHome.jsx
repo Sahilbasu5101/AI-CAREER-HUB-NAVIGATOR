@@ -291,7 +291,7 @@ const DashboardHome = () => {
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600 rounded-full blur-[80px] opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
                                 
                                 <div className="relative z-10 flex justify-between items-start mb-6">
-                                    <h2 className="text-[20px] font-bold leading-tight">Recruiter<br/>Connect</h2>
+                                    <h2 className="text-[20px] font-bold leading-tight">Apply for jobs</h2>
                                     <div className="bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-lg flex flex-col items-center">
                                         <span className="material-symbols-outlined text-[16px] text-slate-400 mb-0.5">lock</span>
                                         <span className="text-[9px] text-slate-300 uppercase font-bold tracking-widest leading-none">LOCKED</span>
@@ -303,7 +303,7 @@ const DashboardHome = () => {
                                 </p>
 
                                 <div className="mt-auto relative z-10">
-                                    <button onClick={() => setShowPremiumModal(true)} className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold py-3.5 rounded-xl text-[14px] shadow-sm transition-colors flex items-center justify-center gap-2">
+                                    <button onClick={() => navigate('/dashboard/jobs')} className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold py-3.5 rounded-xl text-[14px] shadow-sm transition-colors flex items-center justify-center gap-2">
                                         Learn More <span className="material-symbols-outlined text-[16px]">trending_up</span>
                                     </button>
                                 </div>
