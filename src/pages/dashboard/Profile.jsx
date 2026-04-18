@@ -5,10 +5,20 @@ import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { Download, ExternalLink, Share2, CheckCircle2, TrendingUp, Github, Briefcase, GraduationCap, MapPin, Activity, ShieldCheck, Mail, Calendar, Loader2, Sparkles, Target, FlaskConical, X, Plus } from 'lucide-react';
 import { calculateIntelligenceScore, calculateSkillLevel } from '../../lib/intelligenceEngine';
+import html2pdf from 'html2pdf.js';
+
+const LeetCodeIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+        <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.939 5.939 0 0 0 1.271 1.543l5.096 5.109a2.021 2.021 0 0 0 1.618.59 2.004 2.004 0 0 0 1.085-.548l3.443-3.524a2.02 2.02 0 0 0 .574-1.433 2.02 2.02 0 0 0-.574-1.424l-6.567-6.6-6.56 6.586a.222.222 0 0 1-.31 0 .222.222 0 0 1 0-.311l6.558-6.587 6.568 6.6a.222.222 0 0 1 0 .311.222.222 0 0 1-.31 0l-5.097-5.11a3.834 3.834 0 0 1-.806-.976 3.738 3.738 0 0 1-.226-.64 3.551 3.551 0 0 1-.044-1.493 3.44 3.44 0 0 1 .081-.336 3.398 3.398 0 0 1 .778-1.355l3.85-4.123 5.405-5.787A1.373 1.373 0 0 0 13.483 0zm9.467 15.39a1.002 1.002 0 0 0-1.002.99l-9.06 9.06a1.002 1.002 0 0 0 1.417 1.417l9.06-9.06a1.002 1.002 0 0 0-.415-1.407z" />
+    </svg>
+);
 
 const Profile = () => {
     const { user, userData, updateIntelligenceSignal, syncPlatformData } = useAuth();
     const [activeTab, setActiveTab] = useState('Overview');
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [avatarImage, setAvatarImage] = useState(null);
@@ -29,7 +39,51 @@ const Profile = () => {
     // Form states for other categories
     const [academicsForm, setAcademicsForm] = useState({ semester: '', sgpa: '', year: '', subjects: '' });
     const [researchForm, setResearchForm] = useState({ title: '', journal: '', status: 'Published', publishedDate: '' });
-    const [experienceForm, setExperienceForm] = useState({ role: '', company: '', type: 'Internship', startDate: '', endDate: '' });
+    const [experienceForm, setExperienceForm] = useState({ role: '', company: '', type: 'Internship', startDate: '', endDate: '', proof: null });
+    const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
+    const [newGithub, setNewGithub] = useState('');
+    const [isLeetcodeModalOpen, setIsLeetcodeModalOpen] = useState(false);
+    const [newLeetcode, setNewLeetcode] = useState('');
+
+    const handleGithubSave = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            await updateIntelligenceSignal('social_links', { 
+                ...(userData?.social_links || {}), 
+                github: newGithub 
+            });
+            setIsGithubModalOpen(false);
+            setSyncSuccess(true);
+            setTimeout(() => setSyncSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error updating github:", error);
+            alert("Failed to update GitHub");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleLeetcodeSave = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            await updateIntelligenceSignal('social_links', { 
+                ...(userData?.social_links || {}), 
+                leetcode: newLeetcode 
+            });
+            setIsLeetcodeModalOpen(false);
+            setSyncSuccess(true);
+            setTimeout(() => setSyncSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error updating leetcode:", error);
+            alert("Failed to update LeetCode");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handleProjectSubmit = async (e) => {
         e.preventDefault();
@@ -96,7 +150,8 @@ const Profile = () => {
                 });
                 await updateIntelligenceSignal('metrics.research_papers', 1, true);
             } else if (type === 'experience') {
-                formData = experienceForm;
+                const { proof, ...restFormData } = experienceForm;
+                formData = restFormData;
                 signalKey = 'experiences';
                 await addDoc(collection(db, 'users', user.uid, 'experiences'), {
                     ...formData,
@@ -108,7 +163,7 @@ const Profile = () => {
             setActiveCategory(null);
             setAcademicsForm({ semester: '', sgpa: '', year: '', subjects: '' });
             setResearchForm({ title: '', journal: '', status: 'Published', publishedDate: '' });
-            setExperienceForm({ role: '', company: '', type: 'Internship', startDate: '', endDate: '' });
+            setExperienceForm({ role: '', company: '', type: 'Internship', startDate: '', endDate: '', proof: null });
             alert(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`);
         } catch (error) {
             console.error(`Error adding ${type}:`, error);
@@ -167,6 +222,106 @@ const Profile = () => {
         } finally {
             setIsSyncing(false);
         }
+    };
+
+    const handleDownloadResume = () => {
+        setIsGeneratingPdf(true);
+        
+        // Construct hidden DOM layout representing the pure resume format
+        const element = document.createElement('div');
+        const studentName = userData?.identity?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Student Name');
+        const studentRole = userData?.career_dna?.target_role || 'Software Engineer';
+        const studentBranch = userData?.identity?.branch || 'Computer Science';
+        const studentCollege = userData?.identity?.college || 'University';
+        
+        element.innerHTML = `
+            <div style="padding: 40px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111827; max-width: 800px; margin: 0 auto; line-height: 1.5; background: white;">
+                
+                <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563EB; padding-bottom: 15px;">
+                    <h1 style="font-size: 32px; font-weight: 800; margin: 0 0 5px 0; color: #111827; letter-spacing: -0.5px; text-transform: capitalize;">${studentName}</h1>
+                    <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 10px 0; color: #2563EB;">${studentRole}</h2>
+                    <p style="font-size: 14px; color: #4B5563; margin: 0;">${studentBranch} | ${studentCollege}</p>
+                    <p style="font-size: 13px; color: #6B7280; margin: 8px 0 0 0;">${userData?.social_links?.github ? 'github.com/'+userData.social_links.github : 'github.com/developer'} | ${userData?.social_links?.linkedin ? 'linkedin.com/in/'+userData.social_links.linkedin : 'linkedin.com/in/developer'} | ${user?.email || 'student@university.edu'}</p>
+                </div>
+                
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Technical Skills</h2>
+                <div style="margin-bottom: 25px;">
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Languages:</strong> JavaScript (ES6+), Node.js, React.js, Python, Go, C#</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Cloud & Databases:</strong> PostgreSQL, MongoDB, Redis, AWS EC2, Azure, Docker</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0;"><strong style="color: #374151;">Developer Tools:</strong> Git, GitHub Actions, Vercel, .NET Core, Express.js</p>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Professional Experience</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">Software Engineer Intern</h3>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">May 2024 - Aug 2024</span>
+                        </div>
+                        <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 8px 0;">Microsoft | Seattle, WA</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.6;">
+                            <li style="margin-bottom: 5px;">Engineered scalable microservices for Azure Core infrastructure utilizing C# and .NET.</li>
+                            <li style="margin-bottom: 5px;">Reduced container deployment latency by <strong style="color:#111827">30%</strong> through advanced Redis caching mechanisms.</li>
+                            <li style="margin-bottom: 5px;">Authored 15+ comprehensive unit tests in Jest, increasing coverage from 75% to 92%.</li>
+                            <li style="margin-bottom: 5px;">Migrated legacy CI/CD bash scripts to GitHub Actions resulting in robust continuous integration checks.</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">Backend Developer (Contract)</h3>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Jan 2023 - Dec 2023</span>
+                        </div>
+                        <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 8px 0;">Local Startup Inc.</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.6;">
+                            <li style="margin-bottom: 5px;">Architected REST APIs using Node.js/Express handling 5,000+ daily operational requests.</li>
+                            <li style="margin-bottom: 5px;">Integrated Stripe payment gateway securely for seamless end-user subscription flows.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Featured Projects</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">AI Resume Parser</h3>
+                                <span style="font-size: 11px; padding: 2px 6px; background: #EEF2FF; color: #4338CA; border-radius: 4px; font-weight: 700;">Hackathon Winner</span>
+                            </div>
+                            <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Nov 2023</span>
+                        </div>
+                        <p style="font-size: 13.5px; font-weight: 700; color: #4B5563; margin: 0 0 6px 0;">Python, OpenAI GPT-4, React, FastAPI</p>
+                        <ul style="font-size: 13.5px; color: #4B5563; padding-left: 20px; margin: 0; line-height: 1.5;">
+                            <li style="margin-bottom: 4px;">Won 1st Place at University Hackathon against 100+ competing engineering teams.</li>
+                            <li style="margin-bottom: 4px;">Built a multi-modal parser using OpenAI GPT-4 to extract structured data from complex PDF/Word formats, achieving an overall 91% accuracy rate for extraction.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 style="font-size: 15px; font-weight: 800; color: #2563EB; margin: 0 0 8px 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Education</h2>
+                <div style="margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                        <h3 style="font-size: 15.5px; font-weight: 800; margin: 0; color: #111827;">${studentCollege}</h3>
+                        <span style="font-size: 13px; color: #4B5563; font-style: italic; font-weight: 500;">Expected Grad: May 2025</span>
+                    </div>
+                    <p style="font-size: 14px; margin: 0 0 4px 0; font-weight: 700; color: #374151;">Bachelor of Technology in ${studentBranch}</p>
+                    <p style="font-size: 13.5px; margin: 0 0 4px 0; color: #4B5563;"><strong style="color: #111827;">CGPA:</strong> 9.2/10.0 | <strong style="color: #111827;">Major GPA:</strong> 9.5/10.0</p>
+                    <p style="font-size: 13.5px; margin: 0; color: #4B5563;"><strong style="color: #111827;">Select Coursework:</strong> Advanced Algorithms, Operating Systems, Computer Networks, Database Architecture</p>
+                </div>
+            </div>
+        `;
+
+        const opt = {
+            margin:       0.4,
+            filename:     `${studentName.replace(/\s+/g, '_')}_Resume_Generated.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            setIsGeneratingPdf(false);
+        });
     };
 
     // Unified intelligence logic is now imported from intelligenceEngine.js
@@ -266,8 +421,25 @@ const Profile = () => {
                                         <div className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 p-1 rounded-md" title="University Verified">
                                             <ShieldCheck className="size-4" />
                                         </div>
-                                        <div className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 p-1 rounded-md" title="GitHub Connected">
+                                        <div 
+                                            onClick={() => {
+                                                setNewGithub(userData?.social_links?.github || '');
+                                                setIsGithubModalOpen(true);
+                                            }}
+                                            className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 p-1 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" 
+                                            title={userData?.social_links?.github ? "GitHub Connected" : "Add GitHub"}
+                                        >
                                             <Github className="size-4" />
+                                        </div>
+                                        <div 
+                                            onClick={() => {
+                                                setNewLeetcode(userData?.social_links?.leetcode || '');
+                                                setIsLeetcodeModalOpen(true);
+                                            }}
+                                            className="bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 p-1 rounded-md cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors" 
+                                            title={userData?.social_links?.leetcode ? "LeetCode Connected" : "Add LeetCode"}
+                                        >
+                                            <LeetCodeIcon className="size-4" />
                                         </div>
                                     </div>
                                 </div>
@@ -307,7 +479,7 @@ const Profile = () => {
 
                     {/* Right: Actions */}
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto shrink-0 pb-2">
-                        <button className="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
+                        <button onClick={() => setIsShareModalOpen(true)} className="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
                             <Share2 className="size-4" /> Share
                         </button>
                         <Link 
@@ -317,8 +489,13 @@ const Profile = () => {
                             <ExternalLink className="size-4" /> Portfolio
                         </Link>
                         {/* Primary Action */}
-                        <button className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px]">
-                            <Download className="size-4" /> Download Resume
+                        <button 
+                            onClick={handleDownloadResume}
+                            disabled={isGeneratingPdf}
+                            className={`w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm text-[14px] ${isGeneratingPdf ? 'opacity-80 cursor-wait' : ''}`}
+                        >
+                            {isGeneratingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                            {isGeneratingPdf ? 'Generating PDF...' : 'Download Resume'}
                         </button>
                     </div>
                 </div>
@@ -568,7 +745,7 @@ const Profile = () => {
                     {/* Sticky Recruiter Action Console */}
                     <div className="bg-slate-900 dark:bg-[#0B0F19] rounded-2xl p-8 border border-slate-800 shadow-sm flex flex-col gap-6">
                         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                            <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Recruiter Portal</span>
+                            <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
                         </div>
                         
                         <div className="flex flex-col gap-4 mb-2">
@@ -588,14 +765,7 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-3">
-                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm">
-                                <Calendar className="size-4" /> Schedule Interview
-                            </button>
-                            <button className="w-full bg-slate-800 hover:bg-slate-700 text-white text-[14px] font-medium py-3 rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-2">
-                                <Mail className="size-4" /> Contact Student
-                            </button>
-                        </div>
+
                     </div>
 
                     {/* Job Readiness Analytical Dashboard */}
@@ -1007,7 +1177,7 @@ const Profile = () => {
                         )}
                     </form>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div className="flex flex-col gap-6">
                         
                         {!activeCategory ? (
                             <>
@@ -1290,6 +1460,15 @@ const Profile = () => {
                                         <input type="month" value={experienceForm.endDate} onChange={(e) => setExperienceForm(prev => ({...prev, endDate: e.target.value}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-[14px] text-slate-900 dark:text-white" />
                                     </div>
                                 </div>
+                                <div>
+                                    <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Proof (PDF/Docs)</label>
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf,.doc,.docx"
+                                        onChange={(e) => setExperienceForm(prev => ({...prev, proof: e.target.files[0]}))} 
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[14px] text-slate-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                                    />
+                                </div>
                                 <div className="flex justify-end gap-3 pt-2">
                                     <button type="button" onClick={() => setActiveCategory(null)} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 rounded-xl">Cancel</button>
                                     <button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2.5 rounded-xl text-[14px] shadow-md flex items-center gap-2">
@@ -1541,6 +1720,130 @@ const Profile = () => {
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            )}
+
+            {/* Share Profile Modal Overlay */}
+            {isShareModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 p-6 relative animate-in zoom-in-95 duration-200">
+                        <button 
+                            onClick={() => setIsShareModalOpen(false)}
+                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                        >
+                            <X className="size-5" />
+                        </button>
+                        <h3 className="text-[20px] font-bold text-slate-900 dark:text-white mb-1.5 tracking-tight">Share Profile</h3>
+                        <p className="text-[13.5px] text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">Broadcast your portfolio link to recruiters and your extended network.</p>
+                        
+                        <div className="flex justify-center gap-5 mb-7">
+                            <a href={`https://wa.me/?text=${encodeURIComponent("Check out my comprehensive CareerTech profile! " + window.location.href)}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#E8F5E9] hover:bg-[#C8E6C9] flex items-center justify-center transition-transform hover:scale-110 shadow-sm border border-transparent hover:border-green-300">
+                                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" alt="WhatsApp" className="size-6" />
+                            </a>
+                            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${window.location.href}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#E3F2FD] hover:bg-[#BBDEFB] flex items-center justify-center transition-transform hover:scale-110 shadow-sm border border-transparent hover:border-blue-300">
+                                <img src="https://cdn-icons-png.flaticon.com/512/145/145807.png" alt="LinkedIn" className="size-6" />
+                            </a>
+                            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("Check out my AI-driven CareerTech Hub! ")}&url=${window.location.href}`} target="_blank" rel="noopener noreferrer" className="size-12 rounded-full bg-[#F3F4F6] hover:bg-[#E5E7EB] dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center transition-transform hover:scale-110 shadow-sm">
+                                <svg viewBox="0 0 24 24" className="size-5 fill-slate-900 dark:fill-white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.008 5.96H5.078z"></path></svg>
+                            </a>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <input type="text" readOnly value={window.location.href} className="flex-1 bg-transparent text-[13px] font-medium text-slate-600 dark:text-slate-300 outline-none px-2 truncate" />
+                            <button 
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    setIsCopied(true);
+                                    setTimeout(() => setIsCopied(false), 2000);
+                                }}
+                                className={`shrink-0 px-4 py-2 text-[13px] font-bold rounded-lg transition-colors flex items-center justify-center min-w-[80px] ${
+                                    isCopied 
+                                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' 
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                                }`}
+                            >
+                                {isCopied ? 'Copied!' : 'Copy'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* GitHub Username Modal */}
+            {isGithubModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+                        
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <h3 className="text-[18px] font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Github className="size-5 text-slate-700 dark:text-slate-300" /> Add GitHub Profile
+                            </h3>
+                            <button onClick={() => setIsGithubModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleGithubSave} className="p-6 flex flex-col gap-6">
+                            <div>
+                                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">GitHub Username</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newGithub} 
+                                    onChange={(e) => setNewGithub(e.target.value)} 
+                                    placeholder="e.g. yashikasharma" 
+                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-[14px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                                />
+                                <p className="text-[12px] text-slate-500 mt-2">Enter your username only, not the full URL. We use this to analyze your public repositories.</p>
+                            </div>
+                            
+                            <div className="flex gap-3 mt-2">
+                                <button type="button" onClick={() => setIsGithubModalOpen(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[14px] font-bold rounded-xl transition-all">Cancel</button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-[14px] font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-wait">
+                                    {isSubmitting ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : 'Save Connect'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* LeetCode Username Modal */}
+            {isLeetcodeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+                        
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <h3 className="text-[18px] font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <LeetCodeIcon className="size-5 text-orange-600" /> Add LeetCode Profile
+                            </h3>
+                            <button onClick={() => setIsLeetcodeModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleLeetcodeSave} className="p-6 flex flex-col gap-6">
+                            <div>
+                                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">LeetCode Username</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newLeetcode} 
+                                    onChange={(e) => setNewLeetcode(e.target.value)} 
+                                    placeholder="e.g. yashikasharma" 
+                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-[14px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500/50 transition-all" 
+                                />
+                                <p className="text-[12px] text-slate-500 mt-2">Enter your username only. We use this to analyze your coding stats and patterns.</p>
+                            </div>
+                            
+                            <div className="flex gap-3 mt-2">
+                                <button type="button" onClick={() => setIsLeetcodeModalOpen(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[14px] font-bold rounded-xl transition-all">Cancel</button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white text-[14px] font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-wait">
+                                    {isSubmitting ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : 'Save Connect'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

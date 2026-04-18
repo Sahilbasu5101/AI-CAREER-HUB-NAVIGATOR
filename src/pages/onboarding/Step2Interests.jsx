@@ -77,8 +77,8 @@ const Step2Interests = () => {
         <div className="flex flex-col items-center w-full min-h-[calc(100vh-140px)] pb-24">
             <div className="mb-12 text-center mt-2">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eeebf9] text-[#3b28cc] text-[10px] font-[800] tracking-widest uppercase mb-6">
-                    <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                    Personalized Career Discovery
+                    {/* <span className="material-symbols-outlined text-[14px]">auto_awesome</span> */}
+                    {/* Personalized Career Discovery */}
                 </div>
                 <h1 className="text-4xl md:text-[44px] font-[800] tracking-tight text-gray-900 mb-4 leading-tight">
                     Choose Your <span className="text-[#3b28cc]">Career</span><br />

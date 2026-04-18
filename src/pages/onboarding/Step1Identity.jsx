@@ -38,13 +38,14 @@ const Step1Identity = () => {
             const userRef = doc(db, "users", user.uid);
             await setDoc(userRef, {
                 identity: {
-                    name: formData.displayName,
-                    college: formData.university,
-                    branch: formData.course,
+                    name: formData.displayName || '',
+                    college: formData.university || '',
+                    branch: formData.course || '',
                     year: formData.currentYear === '1' ? '1st Year' : 
                           formData.currentYear === '2' ? '2nd Year' :
                           formData.currentYear === '3' ? '3rd Year' :
-                          formData.currentYear === '4' ? '4th Year' : 'Final Year',
+                          formData.currentYear === '4' ? '4th Year' : 
+                          formData.currentYear === '5' ? 'Final Year / Other' : '',
                 },
                 onboardingCompleted: false // Not complete yet
             }, { merge: true });

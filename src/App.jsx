@@ -23,6 +23,7 @@ import Challenges from './pages/dashboard/Challenges';
 import ChallengeDetail from './pages/dashboard/ChallengeDetail';
 import SprintAssessment from './pages/dashboard/SprintAssessment';
 import ResumeAnalyzer from './pages/dashboard/ResumeAnalyzer';
+import Jobs from './pages/dashboard/Jobs';
 import RecruiterLayout from './pages/recruiter/RecruiterLayout';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
 import TalentHunt from './pages/recruiter/TalentHunt';
@@ -67,6 +68,7 @@ function App() {
             <Route path="challenges/:id/assessment" element={<SprintAssessment />} />
             <Route path="insights" element={<Insights />} />
             <Route path="resume-analyzer" element={<ResumeAnalyzer />} />
+            <Route path="jobs" element={<Jobs />} />
           </Route>
 
           {/* Recruiter Routes */}
